@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"mime"
@@ -33,7 +35,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 
 	fmt.Println("uploading thumbnail for video", videoID, "by user", userID)
 
-	// TODO: implement the upload here
+	// Upload implementation BEING HERE =========
 
 	const maxMemory = 10 << 20 // 10 MB
 	r.ParseMultipartForm(maxMemory)
@@ -79,7 +81,17 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	thumbnailPath := cfg.assetsRoot + "/" + videoID.String() + extension[0]
+	randSlice := make([]byte, 32)
+	_, err = rand.Read(randSlice)
+
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't generate random bytes", err)
+		return
+	}
+
+	randomThumbnailId := base64.RawURLEncoding.EncodeToString(randSlice)
+
+	thumbnailPath := cfg.assetsRoot + "/" + randomThumbnailId + extension[0]
 
 	newFile, err := os.Create(thumbnailPath)
 
@@ -95,7 +107,7 @@ func (cfg *apiConfig) handlerUploadThumbnail(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	thumbnailURL := fmt.Sprintf("http://localhost:%s/assets/%s%s", cfg.port, videoID.String(), extension[0])
+	thumbnailURL := fmt.Sprintf("http://localhost:%s/assets/%s%s", cfg.port, randomThumbnailId, extension[0])
 	video.ThumbnailURL = &thumbnailURL
 
 	fmt.Println("Uploaded thumbnail to", *video.ThumbnailURL)
